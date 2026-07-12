@@ -1,6 +1,8 @@
 # Wikipedia Text Preparation (Master Thesis)
 
-This repository contains a reproducible Wikipedia text-preparation pipeline for an experimental AI master thesis.
+This repository contains a reproducible Wikipedia text-preparation pipeline for this project:(entity-enhance-classification
+Public
+)[https://github.com/ProkopDivin/entity-enhance-classification].
 
 The **required thesis preparation flow** is intentionally limited to **three steps**.
 
