@@ -1,4 +1,4 @@
-# Wikipedia Text Preparation (Master Thesis)
+# Wikipedia Text Preparation 
 
 This repository contains a reproducible Wikipedia text-preparation pipeline for this project:https://github.com/ProkopDivin/entity-enhance-classification.
 
