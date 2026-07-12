@@ -1,0 +1,7 @@
+insert_batch_size: 50000
+commit_every: 5
+queue_log_every: 100000
+sqlite_journal_mode: WAL
+sqlite_synchronous: NORMAL
+sqlite_temp_store: MEMORY
+compress_graphml: false
