@@ -26,11 +26,21 @@ Output format:
 
 `page_title<TAB>origin_qid`
 
-### 3) Extract text (WikiExtractor path only)
+### 3) Extract text 
 
 Only the WikiExtractor path is used for thesis text preparation.
 
-#### 3a) Run WikiExtractor
+#### 3a) Get WikiExtractor (if not vendored in your clone)
+
+```bash
+# clone and pin for reproducibility
+git clone https://github.com/attardi/wikiextractor.git
+cd wikiextractor
+```
+
+If `wikiextractor/` already exists in your local repository, you can skip this step.
+
+#### 3b) Run WikiExtractor
 
 ```bash
 cd wikiextractor
@@ -43,7 +53,7 @@ cd wikiextractor
   ../extracted-wiki
 ```
 
-#### 3b) Filter extracted documents by mapping
+#### 3c) Filter extracted documents by mapping
 
 ```bash
 python src/extract_wiki_articles_by_wdid.py \
