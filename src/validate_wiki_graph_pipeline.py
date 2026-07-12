@@ -3,10 +3,10 @@ Validate outputs from wiki_graph_pipeline.py.
 '''
 
 import argparse
-import sqlite3
 from pathlib import Path
 from typing import TextIO
 
+import duckdb
 from geneea.core import logutil  # type: ignore[import-untyped]
 
 LOG = logutil.getLogger(__package__, __file__)
@@ -38,17 +38,17 @@ def process(
     '''
     Validate key output artifacts.
 
-    :param seed_file: original seed URL file
+    :param seed_file: original seed title file
     :param required_pages_path: required pages output
     :param graph_index_path: per-seed graph manifest
-    :param index_db_path: sqlite index path
+    :param index_db_path: DuckDB index path
     '''
     if not required_pages_path.exists():
         raise FileNotFoundError(f'Missing required pages output: {required_pages_path}')
     if not graph_index_path.exists():
         raise FileNotFoundError(f'Missing graph index output: {graph_index_path}')
     if not index_db_path.exists():
-        raise FileNotFoundError(f'Missing sqlite index database: {index_db_path}')
+        raise FileNotFoundError(f'Missing DuckDB index database: {index_db_path}')
 
     with seed_file.open(encoding='utf-8') as seed_in:
         seed_lines = iter_seed_lines(in_file=seed_in)
@@ -64,7 +64,7 @@ def process(
     if len(graph_lines) <= 1:
         raise ValueError('Graph index appears empty')
 
-    conn = sqlite3.connect(index_db_path)
+    conn = duckdb.connect(str(index_db_path), read_only=True)
     try:
         page_count = conn.execute('SELECT COUNT(*) FROM pages').fetchone()
         redirect_count = conn.execute('SELECT COUNT(*) FROM redirects').fetchone()
@@ -93,10 +93,10 @@ def main() -> None:
     argparser = argparse.ArgumentParser(
         description='Validate dump-based Wikipedia graph outputs'
     )
-    argparser.add_argument('--seed-file', type=Path, required=True, help='Seed URL file used in pipeline')
+    argparser.add_argument('--seed-file', type=Path, required=True, help='Seed title file used in pipeline')
     argparser.add_argument('--required-pages', type=Path, required=True, help='required_pages.txt path')
     argparser.add_argument('--graph-index', type=Path, required=True, help='graphs/index.tsv path')
-    argparser.add_argument('--index-db', type=Path, required=True, help='SQLite index path')
+    argparser.add_argument('--index-db', type=Path, required=True, help='DuckDB index path')
 
     logutil.addLogArguments(argparser)
     args = argparser.parse_args()

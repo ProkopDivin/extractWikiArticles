@@ -26,6 +26,7 @@ ARTICLE_NS = 0
 CATEGORY_NS = 14
 SUPPORTED_NS = {ARTICLE_NS, CATEGORY_NS}
 DBConnection = duckdb.DuckDBPyConnection
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
 @dataclass(frozen=True)
@@ -1268,6 +1269,12 @@ def main() -> None:
     '''
     Run dump-based graph extraction.
     '''
+    dumps_default = PROJECT_ROOT / 'enwiki_dumps'
+    index_default = PROJECT_ROOT / 'wiki_graph_index.duckdb'
+    output_default = PROJECT_ROOT / 'output'
+    link_cfg_default = PROJECT_ROOT / 'resources' / 'link_types.yaml'
+    perf_cfg_default = PROJECT_ROOT / 'resources' / 'perf.yaml'
+
     argparser = argparse.ArgumentParser(
         description='Build Wikipedia page graph from local dumps'
     )
@@ -1277,31 +1284,31 @@ def main() -> None:
     argparser.add_argument(
         '--dumps-dir',
         type=Path,
-        default=Path('/home/prokop/wikipedia/enwiki_dumps'),
+        default=dumps_default,
         help='Directory with enwiki dumps',
     )
     argparser.add_argument(
         '--index-db',
         type=Path,
-        default=Path('/home/prokop/wikipedia/wiki_graph_index.duckdb'),
+        default=index_default,
         help='DuckDB index path',
     )
     argparser.add_argument(
         '--output-dir',
         type=Path,
-        default=Path('/home/prokop/wikipedia/output'),
+        default=output_default,
         help='Directory for per-seed graphs',
     )
     argparser.add_argument(
         '--link-config',
         type=Path,
-        default=Path('/home/prokop/wikipedia/resources/link_types.yaml'),
+        default=link_cfg_default,
         help='Link types config path',
     )
     argparser.add_argument(
         '--perf-config',
         type=Path,
-        default=Path('/home/prokop/wikipedia/resources/perf.yaml'),
+        default=perf_cfg_default,
         help='Performance config path',
     )
     argparser.add_argument(
