@@ -62,23 +62,10 @@ python src/extract_wiki_articles_by_wdid.py \
 
 Result: one or more files per Wikidata ID in `selected-articles/` named `{wdid}_en_{n}.txt`.
 
----
-
-## Optional (Not Part of Required 1-3 Text Preparation)
-
-### Compute embeddings
-
-The embedding script is kept in the repository but is not part of the required text-preparation flow:
-
-```bash
-python src/compute_article_embeddings.py \
-  --in-dir selected-articles \
-  --out-dir selected-embeddings
-```
 
 ### Graph scripts
 
-These scripts are also kept for graph experiments and validation:
+These scripts are also kept for future graph experiments and validation:
 
 - `src/wiki_graph_pipeline.py`
 - `src/validate_wiki_graph_pipeline.py`
@@ -101,3 +88,4 @@ These scripts are also kept for graph experiments and validation:
 
 - The previous alternative text-representation preparation path was removed from the codebase.
 - The thesis preparation path now uses only WikiExtractor-based extraction.
+- i planned to do experimentd with link graph ower wikipedia but this was canceled since it stopped being relevant 
