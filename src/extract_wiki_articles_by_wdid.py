@@ -4,13 +4,12 @@ Extract selected Wikipedia articles from WikiExtractor files by title mapping.
 
 import argparse
 import html
+import logging
 import re
 from collections.abc import Iterator
 from pathlib import Path
 
-from geneea.core import logutil  # type: ignore[import-untyped]
-
-LOG = logutil.getLogger(__package__, __file__)
+LOG = logging.getLogger(__name__)
 
 DOC_OPEN_RE = re.compile(r'^<doc\b[^>]*\btitle="(?P<title>[^"]*)"[^>]*>$')
 
@@ -220,10 +219,10 @@ def main() -> None:
         type=Path,
         help='Output folder for files named {wdid}_en_{n}.txt',
     )
+    argparser.add_argument('--log-level', default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'])
 
-    logutil.addLogArguments(argparser)
     args = argparser.parse_args()
-    logutil.configureFromArgs(args)
+    logging.basicConfig(level=args.log_level, format='%(levelname)s %(name)s: %(message)s')
 
     if not args.mapping.is_file():
         raise FileNotFoundError(f'Mapping file not found: {args.mapping}')

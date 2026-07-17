@@ -3,13 +3,13 @@ Validate outputs from wiki_graph_pipeline.py.
 '''
 
 import argparse
+import logging
 from pathlib import Path
 from typing import TextIO
 
 import duckdb
-from geneea.core import logutil  # type: ignore[import-untyped]
 
-LOG = logutil.getLogger(__package__, __file__)
+LOG = logging.getLogger(__name__)
 
 
 def iter_seed_lines(*, in_file: TextIO) -> list[str]:
@@ -97,10 +97,10 @@ def main() -> None:
     argparser.add_argument('--required-pages', type=Path, required=True, help='required_pages.txt path')
     argparser.add_argument('--graph-index', type=Path, required=True, help='graphs/index.tsv path')
     argparser.add_argument('--index-db', type=Path, required=True, help='DuckDB index path')
+    argparser.add_argument('--log-level', default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'])
 
-    logutil.addLogArguments(argparser)
     args = argparser.parse_args()
-    logutil.configureFromArgs(args)
+    logging.basicConfig(level=args.log_level, format='%(levelname)s %(name)s: %(message)s')
 
     process(
         seed_file=args.seed_file,

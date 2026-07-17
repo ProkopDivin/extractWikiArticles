@@ -5,6 +5,7 @@ Build dump-based Wikipedia graphs for seed page titles.
 import argparse
 import bz2
 import gzip
+import logging
 import re
 import sys
 import urllib.parse
@@ -18,9 +19,8 @@ import duckdb
 import mwparserfromhell
 import mwxml
 import wikitextparser as wtp
-from geneea.core import logutil  # type: ignore[import-untyped]
 
-LOG = logutil.getLogger(__package__, __file__)
+LOG = logging.getLogger(__name__)
 
 ARTICLE_NS = 0
 CATEGORY_NS = 14
@@ -1316,10 +1316,10 @@ def main() -> None:
         action='store_true',
         help='Rebuild DuckDB index from dumps',
     )
+    argparser.add_argument('--log-level', default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'])
 
-    logutil.addLogArguments(argparser)
     args = argparser.parse_args()
-    logutil.configureFromArgs(args)
+    logging.basicConfig(level=args.log_level, format='%(levelname)s %(name)s: %(message)s')
 
     if args.depth < 0:
         raise ValueError('depth must be >= 0')

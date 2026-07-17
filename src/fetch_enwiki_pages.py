@@ -3,16 +3,38 @@ Map Wikidata IDs to English Wikipedia page title to origin ID mapping.
 '''
 
 import argparse
+import logging
 import sys
 from collections.abc import Iterator, Sequence
 from typing import TextIO
 
-from geneea.core import logutil
-from geneea.kb.tools.rdfutil import UrlSparqlService
+import requests
 
-LOG = logutil.getLogger(__package__, __file__)
+LOG = logging.getLogger(__name__)
 
 ENTITY_PREFIX = 'http://www.wikidata.org/entity/'
+SPARQL_TIMEOUT = 60
+
+
+def sparql_query(*, url: str, query: str) -> dict:
+    '''
+    Execute a SPARQL SELECT and return parsed JSON results.
+
+    :param url: SPARQL endpoint URL
+    :param query: SPARQL query string
+    :return: parsed JSON response
+    '''
+    resp = requests.post(
+        url,
+        data={'query': query},
+        headers={
+            'Accept': 'application/sparql-results+json',
+            'User-Agent': 'extractWikiArticles/1.0 (https://github.com/ProkopDivin/entity-enhance-classification)',
+        },
+        timeout=SPARQL_TIMEOUT,
+    )
+    resp.raise_for_status()
+    return resp.json()
 
 
 def iter_qids(*, in_file: TextIO) -> Iterator[str]:
@@ -135,18 +157,18 @@ def uniq_list(*, values: Sequence[str]) -> list[str]:
     return out
 
 
-def fetch_enwiki_map(*, sparql: UrlSparqlService, qids: Sequence[str]) -> dict[str, str]:
+def fetch_enwiki_map(*, sparql_url: str, qids: Sequence[str]) -> dict[str, str]:
     '''
     Fetch English Wikipedia page titles for input QIDs.
 
-    :param sparql: SPARQL client
+    :param sparql_url: SPARQL endpoint URL
     :param qids: Wikidata IDs
     :return: mapping qid -> enwiki_title
     '''
     if not qids:
         return {}
 
-    payload = sparql.query(build_enwiki_query(qids=qids))
+    payload = sparql_query(url=sparql_url, query=build_enwiki_query(qids=qids))
     out: dict[str, str] = {}
     for row in payload.get('results', {}).get('bindings', []):
         item_uri = row.get('item', {}).get('value')
@@ -162,14 +184,14 @@ def fetch_enwiki_map(*, sparql: UrlSparqlService, qids: Sequence[str]) -> dict[s
 
 def fetch_parent_map(
     *,
-    sparql: UrlSparqlService,
+    sparql_url: str,
     qids: Sequence[str],
     prop: str,
 ) -> dict[str, list[str]]:
     '''
     Fetch parent mapping for one relation.
 
-    :param sparql: SPARQL client
+    :param sparql_url: SPARQL endpoint URL
     :param qids: Wikidata IDs
     :param prop: property ID
     :return: mapping child_qid -> list[parent_qid]
@@ -177,7 +199,7 @@ def fetch_parent_map(
     if not qids:
         return {}
 
-    payload = sparql.query(build_parent_query(qids=qids, prop=prop))
+    payload = sparql_query(url=sparql_url, query=build_parent_query(qids=qids, prop=prop))
     out: dict[str, list[str]] = {}
     for row in payload.get('results', {}).get('bindings', []):
         item_uri = row.get('item', {}).get('value')
@@ -200,7 +222,7 @@ def fetch_parent_map(
 
 def resolve_with_parent_fallback(
     *,
-    sparql: UrlSparqlService,
+    sparql_url: str,
     qids: Sequence[str],
     max_depth: int,
 ) -> tuple[dict[str, list[str]], dict[str, str], int]:
@@ -211,13 +233,13 @@ def resolve_with_parent_fallback(
     - use P31 parents when available
     - otherwise use P279 parents
 
-    :param sparql: SPARQL client
+    :param sparql_url: SPARQL endpoint URL
     :param qids: original Wikidata IDs
     :param max_depth: max fallback depth
     :return: (mapping qid -> representative_qids, qid_to_enwiki_title, fallback_hits_count)
     '''
     ordered_qids = uniq_list(values=qids)
-    title_map = fetch_enwiki_map(sparql=sparql, qids=ordered_qids)
+    title_map = fetch_enwiki_map(sparql_url=sparql_url, qids=ordered_qids)
     qids_with_page = set(title_map.keys())
     resolved: dict[str, list[str]] = {
         qid: [qid] for qid in ordered_qids if qid in qids_with_page
@@ -243,8 +265,8 @@ def resolve_with_parent_fallback(
         if not current_nodes:
             break
 
-        parents_p31 = fetch_parent_map(sparql=sparql, qids=current_nodes, prop='P31')
-        parents_p279 = fetch_parent_map(sparql=sparql, qids=current_nodes, prop='P279')
+        parents_p31 = fetch_parent_map(sparql_url=sparql_url, qids=current_nodes, prop='P31')
+        parents_p279 = fetch_parent_map(sparql_url=sparql_url, qids=current_nodes, prop='P279')
 
         next_nodes_all: list[str] = []
         for qid in unresolved_now:
@@ -263,7 +285,7 @@ def resolve_with_parent_fallback(
         if not next_nodes_all:
             break
 
-        parent_title_map = fetch_enwiki_map(sparql=sparql, qids=next_nodes_all)
+        parent_title_map = fetch_enwiki_map(sparql_url=sparql_url, qids=next_nodes_all)
         title_map.update(parent_title_map)
         parent_qids_with_page = set(parent_title_map.keys())
         for qid in unresolved_now:
@@ -300,7 +322,6 @@ def process(
     :param batch_size: number of QIDs per request
     :param max_depth: max fallback depth
     '''
-    sparql = UrlSparqlService(sparql_url)
     qid_stream = iter_qids(in_file=in_file)
 
     total_qids = 0
@@ -316,7 +337,7 @@ def process(
         total_qids += len(batch)
         try:
             batch_map, title_map, _batch_fallback = resolve_with_parent_fallback(
-                sparql=sparql,
+                sparql_url=sparql_url,
                 qids=batch,
                 max_depth=max_depth,
             )
@@ -376,14 +397,14 @@ def main() -> None:
     argparser.add_argument('-o', '--output', default='wdid2wiki.txt')
     argparser.add_argument(
         '--sparql-url',
-        default='http://psi.g:9999/bigdata/sparql',
+        default='https://query.wikidata.org/sparql',
     )
     argparser.add_argument('--batch-size', type=int, default=200)
     argparser.add_argument('--max-depth', type=int, default=3)
+    argparser.add_argument('--log-level', default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'])
 
-    logutil.addLogArguments(argparser)
     args = argparser.parse_args()
-    logutil.configureFromArgs(args)
+    logging.basicConfig(level=args.log_level, format='%(levelname)s %(name)s: %(message)s')
 
     if args.batch_size <= 0:
         raise ValueError('batch-size must be > 0')
